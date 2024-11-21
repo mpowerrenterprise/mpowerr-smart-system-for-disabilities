@@ -91,7 +91,7 @@ def execute_command(command):
         webbrowser.open('https://www.facebook.com')
 
     # Additional commands
-    elif "open settings" in command:
+    elif "open setting" in command:
         speak("Opening Windows Settings...")
         os.system("start ms-settings:")
 
@@ -111,12 +111,67 @@ def execute_command(command):
         subprocess.run(script, shell=True)
         subprocess.run("RUNDLL32.EXE user32.dll,UpdatePerUserSystemParameters", shell=True)
 
-    elif "open bluetooth settings" in command:
+    elif "open bluetooth setting" in command:
         speak("Opening Bluetooth settings...")
         os.system("start ms-settings:bluetooth")
+    
+    elif 'shut down pc' in command:
+        speak("Shutting down the laptop.")
+        os.system("shutdown /s /t 1")
+
+    elif 'create folder' in command:
+        folder_name = "NewFolder"  # Modify as needed
+        os.makedirs(folder_name, exist_ok=True)
+        speak(f"Folder {folder_name} created successfully.")
+
+    elif 'create file' in command:
+        file_name = "NewFile.txt"  # Modify as needed
+        with open(file_name, 'w') as f:
+            f.write("This is a new file created by Temarias.")
+        speak(f"File {file_name} created successfully.")
+
+    elif 'rename folder' in command:
+        old_name = "OldFolder"  # Modify as needed
+        new_name = "RenamedFolder"  # Modify as needed
+        if os.path.exists(old_name):
+            os.rename(old_name, new_name)
+            speak(f"Folder renamed from {old_name} to {new_name}.")
+        else:
+            speak("Folder does not exist.")
+
+    elif 'increase volume' in command:
+        for _ in range(5):
+            pyautogui.press("volumeup")
+        speak("Volume increased.")
+
+    elif 'decrease volume' in command:
+        for _ in range(5):
+            pyautogui.press("volumedown")
+        speak("Volume decreased.")
+
+    elif 'capture photo' in command:
+        cam = cv2.VideoCapture(0)
+        if not cam.isOpened():
+            speak("Camera not accessible.")
+            return
+        ret, frame = cam.read()
+        if ret:
+            cv2.imwrite("captured_image.jpg", frame)
+            speak("Photo captured and saved as captured_image.jpg.")
+        else:
+            speak("Failed to capture photo.")
+        cam.release()
+
+    elif 'type' in command:
+        text_to_type = command.replace("type", "").strip()
+        pyautogui.write(text_to_type)
+        speak("Typing completed.")
+
+    elif "open camera" in command:
+        subprocess.run("start microsoft.windows.camera:", shell=True)
 
     elif "connect bluetooth" in command:
-        device_name = "Your Bluetooth Device Name"  # Change with your device name
+        device_name = "P47"  # Change with your device name
         speak(f"Connecting to {device_name}...")
         os.system(f"start ms-settings:bluetooth-devices")
 
