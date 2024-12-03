@@ -1,0 +1,14 @@
+cv2
+mediapipe
+datetime
+threading
+pyttsx3
+speechrecognition
+deepface
+pyautogui
+random
+sys
+webbrowser
+os
+googletrans
+subprocess
