@@ -123,9 +123,9 @@ Messages**
 
 ## 📷 Demo:
 
-![alt text](../docs/media/images/img-1.webp)
+![img-2](https://github.com/user-attachments/assets/f14fdc57-eff3-46ef-b8ca-3fb6a4ad801a)
+![img-1](https://github.com/user-attachments/assets/ebeb4b24-7e11-4e26-8b5b-7c824476b7f7)
 
-![alt text](../docs/media/images/img-2.webp)
 
 ---
 
