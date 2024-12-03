@@ -1,7 +1,6 @@
 import cv2
 import mediapipe as mp
 import pyautogui
-import matplotlib.pyplot as plt
 import speech_recognition as sr
 import pyttsx3
 import datetime
@@ -10,20 +9,41 @@ import sys
 import webbrowser
 import threading
 import os
+import googletrans
+from deepface import DeepFace
 import subprocess
 
-# Initialize Face Mesh and Speech Components
+# Initialize Face Mesh, Speech, and Translation Components
 face_mesh = mp.solutions.face_mesh.FaceMesh(refine_landmarks=True, min_detection_confidence=0.5, min_tracking_confidence=0.5)
 recognizer = sr.Recognizer()
 engine = pyttsx3.init()
+translator = googletrans.Translator()
 
-# Set up voice properties
+# Voice properties
 voices = engine.getProperty('voices')
 engine.setProperty('voice', voices[len(voices) - 1].id)
 
 # Screen dimensions
 screen_w, screen_h = pyautogui.size()
 
+# Motivational quotes
+motivational_quotes = {
+    "happy": [
+        "Keep smiling, life is beautiful.",
+        "Happiness is the key to success.",
+        "Spread positivity and joy!"
+    ],
+    "sad": [
+        "Tough times never last, but tough people do.",
+        "Every day may not be good, but there's something good in every day.",
+        "Believe in yourself and all that you are."
+    ],
+    "neutral": [
+        "Stay focused and stay positive.",
+        "Success is the sum of small efforts repeated day in and day out.",
+        "Make today amazing!"
+    ]
+}
 
 def speak(audio):
     """Function to speak a given text."""
@@ -32,16 +52,16 @@ def speak(audio):
     engine.runAndWait()
 
 
-def greetMe():
+def greet_user():
     """Greet the user based on the time of day."""
-    currentH = int(datetime.datetime.now().hour)
-    if currentH < 12:
-        speak("Good Morning! I am your assistant Temarias.")
-    elif currentH < 18:
+    current_hour = int(datetime.datetime.now().hour)
+    if current_hour < 12:
+        speak("Good Morning!")
+    elif current_hour < 18:
         speak("Good Afternoon!")
     else:
         speak("Good Evening!")
-    speak("How may I help you?")
+    speak("How may I assist you today?")
 
 
 def listen_command():
@@ -51,23 +71,64 @@ def listen_command():
         recognizer.pause_threshold = 1
         audio = recognizer.listen(source, phrase_time_limit=5)
         try:
-            text = recognizer.recognize_google(audio).lower()
-            print("User:", text)
-            return text
+            command = recognizer.recognize_google(audio).lower()
+            print("User:", command)
+            return command
         except sr.UnknownValueError:
-            speak("Sorry, I didn't catch that. Could you please repeat?")
+            speak("Sorry, I didn't catch that. Could you repeat?")
             return ""
         except sr.RequestError:
             speak("Sorry, I'm having trouble with the speech service.")
             return ""
 
 
+def translate_text(text, target_language="en"):
+    """Translate text to the target language using Google Translate."""
+    try:
+        translated = translator.translate(text, dest=target_language).text
+        return translated
+    except Exception as e:
+        print(f"Translation error: {e}")
+        return "Translation unavailable."
+
+
+def detect_emotion(frame):
+    """Detect emotion from the given frame using DeepFace."""
+    try:
+        result = DeepFace.analyze(frame, actions=["emotion"], enforce_detection=False)
+        return result["dominant_emotion"]
+    except Exception as e:
+        print(f"Emotion detection error: {e}")
+        return "neutral"
+
+
 def execute_command(command):
     """Function to execute commands based on recognized speech."""
-    if "what is your name" in command:
-        speak("Temarias!")
+    if "translate" in command:
+        speak("Please say the text you want to translate.")
+        text_to_translate = listen_command()
+        speak("Which language should I translate to?")
+        target_language = listen_command()
+        translated_text = translate_text(text_to_translate, target_language)
+        speak(f"The translation is: {translated_text}")
 
-    elif "hello" in command:
+    elif "open google" in command:
+        speak("Opening Google...")
+        webbrowser.open("https://www.google.com")
+
+    elif "emergency contact" in command:
+        speak("Calling emergency contact...")
+        # Replace with appropriate emergency action, e.g., sending a message or call.
+
+    elif "read screen" in command:
+        speak("Screen reading is not implemented yet but could be using OCR.")
+        # Implement OCR-based screen reading if needed.
+
+    elif "type with eyes" in command:
+        speak("Eye-controlled typing activated.")
+        # Implement typing functionality as part of eye-controlled mouse logic.
+
+     elif "hello" in command:
         speak("Hello!")
 
     elif "play tamil song" in command:
@@ -200,14 +261,33 @@ def execute_command(command):
     elif "who are you" in command:
         speak("I am Temarias, your virtual assistant.")
 
-    elif "bye" in command or "stop" in command:
+    elif "daily planner" in command:
+        speak("What task should I add to your daily planner?")
+        task = listen_command()
+        with open("daily_planner.txt", "a") as planner:
+            planner.write(f"{datetime.datetime.now()} - {task}\n")
+        speak("Task added to your daily planner.")
+
+    elif "what is my emotion" in command:
+        cam = cv2.VideoCapture(0)
+        ret, frame = cam.read()
+        if ret:
+            emotion = detect_emotion(frame)
+            speak(f"I think you are feeling {emotion}.")
+            if emotion in motivational_quotes:
+                speak(random.choice(motivational_quotes[emotion]))
+        else:
+            speak("I couldn't access your camera.")
+        cam.release()
+
+    elif "goodbye" in command or "stop" in command:
         speak("Goodbye! Have a nice day.")
         sys.exit()
 
 
 def voice_assistant():
     """Run the voice assistant in a separate thread."""
-    greetMe()
+    greet_user()
     while True:
         command = listen_command()
         if command:
@@ -218,16 +298,14 @@ def eye_controlled_mouse():
     """Eye-Controlled Mouse Functionality."""
     cam = cv2.VideoCapture(0)
     if not cam.isOpened():
-        raise Exception("Error: Camera not accessible. Please check the connection.")
+        raise Exception("Camera not accessible.")
 
     try:
         while True:
             ret, frame = cam.read()
             if not ret:
-                print("Failed to grab frame from camera. Exiting...")
                 break
 
-            # Flip and preprocess the frame
             frame = cv2.flip(frame, 1)
             rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             results = face_mesh.process(rgb_frame)
@@ -235,40 +313,24 @@ def eye_controlled_mouse():
 
             if results.multi_face_landmarks:
                 landmarks = results.multi_face_landmarks[0].landmark
-
-                # Cursor control using specific landmarks
                 for id, landmark in enumerate(landmarks[474:478]):
                     x = int(landmark.x * frame_w)
                     y = int(landmark.y * frame_h)
-
-                    if id == 1:  # Control the mouse using this landmark
+                    if id == 1:
                         screen_x = int(screen_w * landmark.x)
                         screen_y = int(screen_h * landmark.y)
                         pyautogui.moveTo(screen_x, screen_y, duration=0.1)
 
-                # Blink detection for left eye
                 left_eye = [landmarks[145], landmarks[159]]
-                if abs(left_eye[0].y - left_eye[1].y) < 0.004:  # Adjust threshold if necessary
+                if abs(left_eye[0].y - left_eye[1].y) < 0.004:
                     pyautogui.click()
-                    pyautogui.sleep(1)  # Prevent multiple rapid clicks
-
-            # Display the frame using Matplotlib
-            plt.imshow(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-            plt.axis('off')
-            plt.show(block=False)
-            plt.pause(0.01)
-            plt.clf()  # Clear the figure for the next frame
-
+                    pyautogui.sleep(1)
     except Exception as e:
-        print(f"An error occurred: {e}")
+        print(f"Error in eye-controlled mouse: {e}")
     finally:
         cam.release()
-        print("Camera released.")
 
 
 if __name__ == "__main__":
-    # Run voice assistant in a separate thread
     threading.Thread(target=voice_assistant, daemon=True).start()
-
-    # Run eye-controlled mouse in the main thread
     eye_controlled_mouse()
